@@ -140,20 +140,25 @@ def create_zip_archive(files, archive_name='generated_data.zip'):
 
 @app.route('/generate', methods=['POST'])
 def generate():
+    # Check if a file was uploaded
     if 'schema_file' not in request.files:
         return jsonify({"error": "No file uploaded"})
     
     schema_file = request.files['schema_file']
     
+    # Check if filename is empty
     if schema_file.filename == '':
         return jsonify({"error": "No selected file"})
 
+    # Get count value
     count = int(request.form['count'])
 
-    temp_dir = 'tmp_schema_files'  # Use tmp directory for temporary storage
+    # Temporary directory to extract zip files
+    temp_dir = 'temp_schema_files'
     os.makedirs(temp_dir, exist_ok=True)
 
-    output_dir = '/tmp/data'  # Vercel provides /tmp for temporary files
+    # Output directory for generated data
+    output_dir = 'data'
     os.makedirs(output_dir, exist_ok=True)
 
     try:
@@ -161,22 +166,30 @@ def generate():
         schema_file_path = os.path.join(temp_dir, schema_file.filename)
         schema_file.save(schema_file_path)
 
+        # List to store all generated files
         all_generated_files = []
 
+        # Check if it's a zip file
         if schema_file.filename.lower().endswith('.zip'):
+            # Extract zip file
             with zipfile.ZipFile(schema_file_path, 'r') as zip_ref:
                 zip_ref.extractall(temp_dir)
             
+            # Process all JSON files in the extracted directory
             for root, dirs, files in os.walk(temp_dir):
                 for file in files:
                     if file.lower().endswith('.json'):
                         file_path = os.path.join(root, file)
                         
                         try:
+                            # Read and parse JSON file
                             with open(file_path, 'r') as f:
                                 schema_json = json.load(f)
                             
+                            # Extract schema
                             table_name, entity_key, schema = extract_schema_from_json(schema_json)
+                            
+                            # Generate data
                             schema_key = schema_json.get('schemaKey', 'unknown_schema')
                             generated_files = generate_random_transaction(
                                 schema, 
@@ -185,17 +198,23 @@ def generate():
                                 schema_key=schema_key, 
                                 entity_key=entity_key
                             )
+                            
                             all_generated_files.extend(generated_files)
                         
                         except Exception as e:
+                            # Log individual file processing errors
                             print(f"Error processing {file}: {str(e)}")
                             print(traceback.format_exc())
         
         else:
+            # Process single JSON file
             with open(schema_file_path, 'r') as f:
                 schema_json = json.load(f)
             
+            # Extract schema
             table_name, entity_key, schema = extract_schema_from_json(schema_json)
+            
+            # Generate data
             schema_key = schema_json.get('schemaKey', 'unknown_schema')
             generated_files = generate_random_transaction(
                 schema, 
@@ -204,12 +223,17 @@ def generate():
                 schema_key=schema_key, 
                 entity_key=entity_key
             )
+            
             all_generated_files.extend(generated_files)
 
+        # Create zip archive of generated files
         zip_path = create_zip_archive(all_generated_files)
 
+        # Clean up temporary directory
+        import shutil
         shutil.rmtree(temp_dir)
 
+        # Return success response with download link
         return jsonify({
             "status": "success", 
             "message": f"Generated {len(all_generated_files)} files",
@@ -219,13 +243,23 @@ def generate():
     except json.JSONDecodeError:
         return jsonify({"error": "Invalid JSON format in schema file."})
     except Exception as e:
+        # Log the full error for debugging
         print(traceback.format_exc())
         return jsonify({"error": str(e)})
 
 @app.route('/download/<filename>')
 def download_file(filename):
+    """
+    Serve the generated zip file for download.
+    
+    Args:
+        filename (str): Name of the zip file to download
+    
+    Returns:
+        Flask response with the zip file
+    """
     try:
-        return send_from_directory('/tmp/downloads', filename, as_attachment=True)
+        return send_from_directory('downloads', filename, as_attachment=True)
     except FileNotFoundError:
         return jsonify({"error": "File not found"}), 404
 
