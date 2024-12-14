@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Data Generator</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1 {
+            font-size: 2.5em;
+            color: #4CAF50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        form {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        label {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            display: inline-block;
+            font-weight: bold;
+        }
+        input, button {
+            margin: 15px 0;
+            padding: 12px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1em;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        input[type="file"] {
+            padding: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .file-info {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        #loading {
+            display: none;
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: #666;
+            text-align: center;
+        }
+        #error {
+            display: none;
+            color: red;
+            font-size: 1.1em;
+            margin-top: 20px;
+            text-align: center;
+        }
+        #download-link {
+            display: none;
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            text-decoration: none;
+            color: #4CAF50;
+            border: 2px solid #4CAF50;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        #download-link:hover {
+            background-color: #4CAF50;
+            color: white;
+        }
+        footer {
+            background-color: #282828;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            margin-top: 40px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Random Data Generator</h1>
+    <form id="generate-form">
+        <label for="schema_file">Upload Schema File (JSON or ZIP):</label><br>
+        <input type="file" id="schema_file" name="schema_file" accept=".json,.zip" required><br>
+        <p class="file-info">
+            ✨ Supports single JSON files and ZIP archives with multiple JSON files.
+        </p>
+        <label for="count">Number of Records per Schema:</label><br>
+        <input type="number" id="count" name="count" min="1" value="1" required><br><br>
+        <button type="submit">Generate Data</button>
+    </form>
+
+    <div id="loading">Generating files... Please wait.</div>
+    <div id="error"></div>
+    <a href="#" id="download-link" target="_blank">Download Generated Data</a>
+
+    <script>
+        document.getElementById('generate-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Reset previous state
+            document.getElementById('download-link').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+
+            // Create form data
+            var formData = new FormData(this);
+
+            // Send AJAX request
+            fetch('/generate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+
+                if (data.status === 'success') {
+                    // Show download link
+                    var downloadLink = document.getElementById('download-link');
+                    downloadLink.href = data.download_link;
+                    downloadLink.style.display = 'block';
+                    downloadLink.textContent = 'Download Generated Data (' + data.message + ')';
+                } else {
+                    // Show error
+                    var errorDiv = document.getElementById('error');
+                    errorDiv.textContent = 'Error: ' + data.error;
+                    errorDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                
+                var errorDiv = document.getElementById('error');
+                errorDiv.textContent = 'Network Error: ' + error.message;
+                errorDiv.style.display = 'block';
+            });
+        });
+    </script>
+
+    <footer>
+        <p>&copy; 2024 Purval Bhude</p>
+    </footer>
+</body>
+</html>
